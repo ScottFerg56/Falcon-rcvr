@@ -60,6 +60,11 @@ bool SendData(const uint8_t *pData, int len)
     return true;
 }
 
+void SendCmd(String cmd)
+{
+    SendData((uint8_t*)cmd.c_str(), cmd.length());
+}
+
 int flog_printer(const char* s)
 {
     int len = Serial.print(s);
@@ -80,7 +85,7 @@ void setup()
     Serial.begin(115200);
     delay(2000);
     FLogger::setLogLevel(FLOG_VERBOSE);
-    FLogger::setPrinter(flog_printer);
+    // FLogger::setPrinter(flog_printer);
     root.AddObject(new Debug());
     root.AddObject(new Sounds());
     // I2S audio initialization seems to mess with PIN_NEOPIXEL (pin 0).
@@ -89,6 +94,8 @@ void setup()
     root.AddObject(new Lights());
     root.AddObject(new Ramp());
     root.AddObject(new Rectenna());
+
+    root.SetSend([](String cmd) { SendCmd(cmd); });   // { Serial.println(cmd.c_str()); });
 
     flogi("WIFI init");
     if (!WiFi.mode(WIFI_STA))
