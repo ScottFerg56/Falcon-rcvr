@@ -10,6 +10,7 @@ public:
     const char*     GetName() { return "Sounds"; }
 	void		    Setup();
 	void		    Run();
+    void            Play(String fileName);
 private:
 	Metronome	Metro;
 };

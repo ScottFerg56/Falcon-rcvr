@@ -20,19 +20,27 @@ public:
 
     void Set(long value)
     {
-        // Open music file
-        bool fret = audio.connecttoFS(SPIFFS,"/Cheerful R2D2.mp3");
-        if (!fret)
-        {
-            floge("audio connect error");
-            return;
-        }
-        auto s = audio.getFileSize();
-        flogd("audio size %d", s);
+        Snds()->Play("Cheerful R2D2.mp3");
     }
 
     long Get() { return 0; }
+private:
+    Sounds* Snds() { return (Sounds*)Parent; }
+
 };
+
+void Sounds::Play(String fileName)
+{
+    // Open music file
+    bool fret = audio.connecttoFS(SPIFFS, ("/" + fileName).c_str());
+    if (!fret)
+    {
+        floge("audio connect error");
+        return;
+    }
+    auto s = audio.getFileSize();
+    flogd("audio size %d", s);
+}
 
 void Sounds::Setup()
 {
@@ -42,20 +50,6 @@ void Sounds::Setup()
         floge("SPIFFS init error");
         return;
     }
-
-    // File file = SPIFFS.open("/test.txt");
-    // if (file.size() == 0)
-    // {
-    //     floge("Failed to open file for reading");
-    //     return;
-    // }
-    
-    // Serial.println("File Content:");
-    // while (file.available())
-    // {
-    //     Serial.write(file.read());
-    // }
-    // file.close();
 
     // Setup I2S 
     bool fret = audio.setPinout(Pin_I2S_BCLK, Pin_I2S_LRC, Pin_I2S_DOUT);

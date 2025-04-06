@@ -6,6 +6,7 @@
 #include "Ramp.h"
 #include <esp_now.h>
 #include <WiFi.h>
+#include "SPIFFS.h"
 
 Root root;
 
@@ -19,6 +20,17 @@ esp_now_peer_info_t PeerInfo;
 bool DataSent = false;
 bool DataConnected = false;
 
+struct FilePacketHdr
+{
+    char        tag;
+    uint32_t    packetNum;
+};
+
+uint32_t FilePacketCount = 0;
+uint32_t FilePacketNumber = 0;
+String FilePath;
+bool FileXferComplete = false;
+
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
     DataSent = false;
@@ -29,11 +41,70 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
     }
 }
 
+void SendCmd(String cmd);
+
 void OnDataRecv(const uint8_t *mac_addr, const uint8_t *pData, int len)
 {
     DataConnected = true;
-    String cmd(pData, len);
-    root.Command(cmd);
+    if (pData[0] == '1')
+    {
+        FilePacketHdr hdr;
+        memcpy(&hdr, pData, sizeof(hdr));
+        FilePacketNumber = 1;
+        FilePacketCount = hdr.packetNum;
+        FilePath = String((char*)pData + sizeof(hdr));
+        flogv("Starting transfer: %s  #packets: %lu", FilePath.c_str(), FilePacketCount);
+        SPIFFS.remove(("/" + FilePath).c_str());
+        SendCmd("2");
+    }
+    else if (pData[0] == '2')
+    {
+        FilePacketHdr hdr;
+        memcpy(&hdr, pData, sizeof(hdr));
+        uint32_t packetNumber = hdr.packetNum;
+        if (packetNumber != FilePacketNumber)
+        {
+            floge("packet number %lu doesn't match expected %lu", packetNumber, FilePacketNumber);
+            FilePacketNumber = 0;
+            FilePacketCount = 0;
+            FilePath = "";
+            SendCmd("3");   // terminate transfer
+            return;
+        }
+        //Serial.println("chunk NUMBER = " + String(currentTransmitCurrentPosition));
+        File file = SPIFFS.open(("/" + FilePath).c_str(), FILE_APPEND);
+        if (!file)
+        {
+            floge("Error opening file for append");
+            FilePacketNumber = 0;
+            FilePacketCount = 0;
+            FilePath = "";
+            SendCmd("3");   // terminate transfer
+            return;
+        }
+        file.write(pData + sizeof(hdr), len - sizeof(hdr));
+        uint32_t fileSize = file.size();
+        file.close();
+        // flogv("File packet %lu of %lu received, file size: %lu", FilePacketNumber, FilePacketCount, fileSize);
+  
+        if (FilePacketNumber == FilePacketCount)
+        {
+            FileXferComplete = true;
+            FilePacketNumber = 0;
+            FilePacketCount = 0;
+            flogv("File transfer complete");
+        }
+        else
+        {
+            ++FilePacketNumber;
+        }
+        SendCmd("2");   // ACK the packet
+    }
+    else
+    {
+        String cmd(pData, len);
+        root.Command(cmd);
+    }
 }
 
 bool SendData(const uint8_t *pData, int len)
@@ -130,4 +201,11 @@ void setup()
 void loop()
 {
     root.Run();
+    if (FileXferComplete)
+    {
+        FileXferComplete = false;
+        // flogv("File transfer complete");
+        ((Sounds*)root.GetObject('s'))->Play(FilePath);
+        FilePath = "";
+    }
 }
