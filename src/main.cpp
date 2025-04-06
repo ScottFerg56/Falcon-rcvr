@@ -7,6 +7,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include "SPIFFS.h"
+#include "Agent.h"
 
 Root root;
 
@@ -16,137 +17,45 @@ Root root;
 
 uint8_t peerMacAddress[] = {0xD8, 0x3B, 0xDA, 0x87, 0x52, 0x58};
 
-esp_now_peer_info_t PeerInfo;
-bool DataSent = false;
-bool DataConnected = false;
-
-struct FilePacketHdr
-{
-    char        tag;
-    uint32_t    packetNum;
-};
-
-uint32_t FilePacketCount = 0;
-uint32_t FilePacketNumber = 0;
-String FilePath;
-bool FileXferComplete = false;
-
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
-{
-    DataSent = false;
-    if (status != ESP_NOW_SEND_SUCCESS)
-    {
-        flogw("Delivery Fail");
-        DataConnected = false;
-    }
-}
-
-void SendCmd(String cmd);
-
-void OnDataRecv(const uint8_t *mac_addr, const uint8_t *pData, int len)
-{
-    DataConnected = true;
-    if (pData[0] == '1')
-    {
-        FilePacketHdr hdr;
-        memcpy(&hdr, pData, sizeof(hdr));
-        FilePacketNumber = 1;
-        FilePacketCount = hdr.packetNum;
-        FilePath = String((char*)pData + sizeof(hdr));
-        flogv("Starting transfer: %s  #packets: %lu", FilePath.c_str(), FilePacketCount);
-        SPIFFS.remove(("/" + FilePath).c_str());
-        SendCmd("2");
-    }
-    else if (pData[0] == '2')
-    {
-        FilePacketHdr hdr;
-        memcpy(&hdr, pData, sizeof(hdr));
-        uint32_t packetNumber = hdr.packetNum;
-        if (packetNumber != FilePacketNumber)
-        {
-            floge("packet number %lu doesn't match expected %lu", packetNumber, FilePacketNumber);
-            FilePacketNumber = 0;
-            FilePacketCount = 0;
-            FilePath = "";
-            SendCmd("3");   // terminate transfer
-            return;
-        }
-        //Serial.println("chunk NUMBER = " + String(currentTransmitCurrentPosition));
-        File file = SPIFFS.open(("/" + FilePath).c_str(), FILE_APPEND);
-        if (!file)
-        {
-            floge("Error opening file for append");
-            FilePacketNumber = 0;
-            FilePacketCount = 0;
-            FilePath = "";
-            SendCmd("3");   // terminate transfer
-            return;
-        }
-        file.write(pData + sizeof(hdr), len - sizeof(hdr));
-        uint32_t fileSize = file.size();
-        file.close();
-        // flogv("File packet %lu of %lu received, file size: %lu", FilePacketNumber, FilePacketCount, fileSize);
-  
-        if (FilePacketNumber == FilePacketCount)
-        {
-            FileXferComplete = true;
-            FilePacketNumber = 0;
-            FilePacketCount = 0;
-            flogv("File transfer complete");
-        }
-        else
-        {
-            ++FilePacketNumber;
-        }
-        SendCmd("2");   // ACK the packet
-    }
-    else
-    {
-        String cmd(pData, len);
-        root.Command(cmd);
-    }
-}
-
-bool SendData(const uint8_t *pData, int len)
-{
-    if (DataSent)
-    {
-        // data sent but not acknowledged; wait it out a while
-        unsigned long ms = millis();
-        while (DataSent)
-        {
-            if (millis() - ms > 100)
-                DataSent = false;
-        }
-    }
-    DataSent = true;
-    esp_err_t result = esp_now_send(PeerInfo.peer_addr, pData, len);
-    if (result != ESP_OK)
-    {
-        DataConnected = false;   // don't get caught up in infinite logging loop!!
-        floge("Error sending data: %s", esp_err_to_name(result));
-        DataSent = false;
-        return false;
-    }
-    return true;
-}
-
-void SendCmd(String cmd)
-{
-    SendData((uint8_t*)cmd.c_str(), cmd.length());
-}
-
 int flog_printer(const char* s)
 {
     int len = Serial.print(s);
-    if (DataConnected)
-    {
-        // echo the message only if the esp_now connection is active
-        len = strlen(s);
-        SendData((uint8_t*)s, len);
-    }
+    // echo the message to the esp_now peer
+    len = strlen(s);
+    Agent::GetInstance().SendData((uint8_t*)s, len);
     return len;
 }
+
+void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
+    Serial.printf("Listing directory: %s\n", dirname);
+  
+    File root = fs.open(dirname);
+    if(!root){
+      Serial.println("Failed to open directory");
+      return;
+    }
+    if(!root.isDirectory()){
+      Serial.println("Not a directory");
+      return;
+    }
+  
+    File file = root.openNextFile();
+    while(file){
+      if(file.isDirectory()){
+        Serial.print("  DIR : ");
+        Serial.println(file.name());
+        if(levels){
+          listDir(fs, file.name(), levels -1);
+        }
+      } else {
+        Serial.print("  FILE: ");
+        Serial.print(file.name());
+        Serial.print("  SIZE: ");
+        Serial.println(file.size());
+      }
+      file = root.openNextFile();
+    }
+  }
 
 void setup()
 {
@@ -166,33 +75,20 @@ void setup()
     root.AddObject(new Ramp());
     root.AddObject(new Rectenna());
 
-    root.SetSend([](String cmd) { SendCmd(cmd); });   // { Serial.println(cmd.c_str()); });
+    root.SetSend([](String cmd) { Agent::GetInstance().SendCmd(cmd); });
 
-    flogi("WIFI init");
-    if (!WiFi.mode(WIFI_STA))
-        flogf("%s FAILED", "WIFI init");
+    if (!SPIFFS.begin())
+    {
+        floge("SPIFFS init error");
+    }
+    else
+    {
+        listDir(SPIFFS, "/", 0);
+        Serial.printf("Total space: %lu\n", SPIFFS.totalBytes());
+        Serial.printf("Used space: %lu\n", SPIFFS.usedBytes());
+    }
 
-    flogi("MAC addr: %s", WiFi.macAddress().c_str());
-
-    flogi("ESP_NOW init");
-    if (esp_now_init() != ESP_OK)
-        flogf("%s FAILED", "ESP_NOW init");
-
-    //flogi("ESP_NOW peer add");
-    memset(&PeerInfo, 0, sizeof(PeerInfo));
-    memcpy(PeerInfo.peer_addr, peerMacAddress, sizeof(PeerInfo.peer_addr));
-    //PeerInfo.channel = 0;
-    //PeerInfo.encrypt = false;
-    if (esp_now_add_peer(&PeerInfo) != ESP_OK)
-        flogf("%s FAILED", "ESP_NOW peer add");
-    
-    //flogi("ESP_NOW send cb");
-    esp_now_register_send_cb(OnDataSent);
-
-    //flogi("ESP_NOW recv cb");
-    esp_now_register_recv_cb(OnDataRecv);
-
-    flogi("ESP_NOW init complete");
+    Agent::GetInstance().Setup(&SPIFFS, peerMacAddress, [](String cmd) { root.Command(cmd); });
 
     root.Setup();
     flogv("Setup done");
@@ -201,11 +97,13 @@ void setup()
 void loop()
 {
     root.Run();
-    if (FileXferComplete)
+    if (!Agent::GetInstance().FileReceived.isEmpty())
     {
-        FileXferComplete = false;
         // flogv("File transfer complete");
-        ((Sounds*)root.GetObject('s'))->Play(FilePath);
-        FilePath = "";
+        ((Sounds*)root.GetObject('s'))->Play(Agent::GetInstance().FileReceived);
+        Agent::GetInstance().FileReceived = "";
     }
+
+    Agent::GetInstance().Loop();
+
 }

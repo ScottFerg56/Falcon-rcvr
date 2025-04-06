@@ -13,5 +13,4 @@ public:
 	void        Run();
 private:
 	Metronome	Metro;
-	bool		Connected = false;
 };

@@ -1,4 +1,5 @@
 #include "Debug.h"
+#include "Agent.h"
 
 class DPropLogLevel : public OMProperty
 {
@@ -56,16 +57,7 @@ void Debug::Run()
 {
 	if (Metro)
 	{
-		if (Connected != Serial)
-		{
-			Connected = Serial;
-			// sound.Play(Connected ? Sound::R2D2_Cheerful : Sound::R2D2_Sad);
-			if (Connected)
-			{
-                flogv("Debug connected ");
-			}
-		}
-		if (Connected && Serial.available())
+		if (Serial.available())
 		{
             static String cmd;
             while (Serial.available())
@@ -79,7 +71,25 @@ void Debug::Run()
                     Serial.write('\n');
                 if (c < ' ')
                 {
-                    ((Root*)Parent)->Command(cmd);
+                    // terminate command
+                    if (cmd.length() > 0)
+                    {
+                        if (cmd[0] == '|')
+                        {
+                            // pipe a command to our peer
+                            ((Root*)Parent)->SendPacket(cmd.substring(1));
+                        }
+                        else if (cmd[0] == 'x')
+                        {
+                            // file transfer
+                            Agent::GetInstance().StartFileTransfer("/Sad R2D2.mp3");
+                        }
+                        else
+                        {
+                            // command for ourself
+                            ((Root*)Parent)->Command(cmd);
+                        }
+                    }
                     cmd.clear();
                 }
                 else

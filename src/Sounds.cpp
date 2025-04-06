@@ -45,17 +45,11 @@ void Sounds::Play(String fileName)
 void Sounds::Setup()
 {
     AddProperty(new SPropPlay());
-    if (!SPIFFS.begin())
-    {
-        floge("SPIFFS init error");
-        return;
-    }
 
     // Setup I2S 
-    bool fret = audio.setPinout(Pin_I2S_BCLK, Pin_I2S_LRC, Pin_I2S_DOUT);
-    if (!fret)
+    if (!audio.setPinout(Pin_I2S_BCLK, Pin_I2S_LRC, Pin_I2S_DOUT))
     {
-        floge("set pinout error");
+        floge("Audio set pinout error");
         return;
     }
 
