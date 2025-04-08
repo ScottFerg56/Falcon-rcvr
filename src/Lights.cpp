@@ -1,6 +1,3 @@
-/*
-	Lights
-*/
 #include "rcvr.h"
 #include <Arduino.h>
 #include "FLogger.h"
@@ -38,18 +35,16 @@ FXServer fxServer;
 
 struct LightDef
 {
-    char Id;
-    const char* Name;
+    const char* Path;
     uint8_t Anim;
     FXParams Params;
     FXSegmentBase* Seg;
+    uint8_t SegId;
 };
 
 #define DEF_SPEED 1000
 
-//
 // Pixels grouped into logical elements, ordered by pixel number.
-//
 const uint16_t Pixels_Warning        [] = { 1, 5, 16, 17, 18, 19, 23, 24, 42, /*63, 66, 98, 99, 102, 103,*/ PMAP_END };
 const uint16_t Pixels_Landing        [] = { 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 25, /*62, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74, 100, 101, 104, 105,*/ PMAP_END };
 const uint16_t Pixels_Headlight      [] = { 20, /*61,*/ PMAP_END };
@@ -58,218 +53,153 @@ const uint16_t Pixels_Floor          [] = { 44, 45, 46, 47, 48, 57, PMAP_END };
 const uint16_t Pixels_Engine         [] = { /*75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,*/ PMAP_END };
 
 LightDef LightDefs[] = 
-{// Id Name               Anim                 On     Color1    Color2    Speed      Reverse Segment
-{ 'e', "Engine",		  FX_STATIC,  FXParams(false, 0x000040, 0x004000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Engine, &NeoBus)    },
-{ 'l', "Landing",		  FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Landing, &NeoBus)   },
-{ 'w', "Warning",		  FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Warning, &NeoBus)   },
-{ 'd', "Headlight",	      FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Headlight, &NeoBus) },
-{ 'g', "Gunwell",         FX_STATIC,  FXParams(false, 0x804040, 0x000000, DEF_SPEED, false), new FXStripSegRange(0, &NeoBus)                 },
-{ 'r', "Ramp",            FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(3, &NeoBus)                 },
-{ 't', "Tubes",           FX_COUNT,   FXParams(false, 0, 0, 0, false), nullptr },
-  { 's', "Sconce",        FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Sconce, &NeoBus)    },
-  { 'f', "Floor",         FX_STATIC,  FXParams(false, 0x004040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Floor, &NeoBus)     },
-  {  0,  "",              FX_COUNT,   FXParams(false, 0, 0, 0, false), nullptr },
-{ 'h', "Hold",            FX_COUNT,   FXParams(false, 0, 0, 0, false), nullptr },
-  { 'y', "Bay",	          FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(55, 56, &NeoBus)            },
-  { 'b', "Bed",           FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Monitor)          },
-  { 'g', "Grates",        FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(53, 54, &NeoBus)            },
-  { 'm', "Monitor",       FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Bed)              },
-  { '0', "Red",	          FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegRange(49, &NeoBus)                },
-  { '1', "Green",	      FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegRange(51, &NeoBus)                },
-  { '2', "Blue",	      FX_STATIC,  FXParams(false, 0x000040, 0x000000, DEF_SPEED, false), new FXStripSegRange(52, &NeoBus)                },
-  { '3', "Yellow",        FX_STATIC,  FXParams(false, 0x004040, 0x000000, DEF_SPEED, false), new FXStripSegRange(50, &NeoBus)                },
-  {  0,  "",              FX_COUNT,   FXParams(false, 0, 0, 0, false), nullptr },
-{ 'c', "Cockpit",         FX_COUNT,   FXParams(false, 0, 0, 0, false), nullptr },
-  { 'm', "Monitor",       FX_BLINK,   FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Cockpit_Monitor)       },
-  { '0', "Red",	          FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegRange(37, &NeoBus)                },
-  { '1', "Green",	      FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegRange(35, &NeoBus)                },
-  { '2', "Blue",	      FX_STATIC,  FXParams(false, 0x000040, 0x000000, DEF_SPEED, false), new FXStripSegRange(36, &NeoBus)                },
-  { '3', "Yellow",        FX_STATIC,  FXParams(false, 0x404000, 0x000000, DEF_SPEED, false), new FXStripSegRange(38, &NeoBus)                },
-  { '4', "Wall UL",       FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(41, &NeoBus)                },
-  { '5', "Wall UR",       FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(40, &NeoBus)                },
-  { '6', "Wall LL",       FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(43, &NeoBus)                },
-  { '7', "Wall LR",       FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(39, &NeoBus)                },
-  {  0,  "",              FX_COUNT,   FXParams(false, 0, 0, 0, false), nullptr },
-{ 'z', "Test Neo",        FX_BLINK,   FXParams(true,  0x000040, 0x004000, DEF_SPEED, false), new FXStripSegRange(0, &NeoOne)                 },
+{//             Path   Anim                 On     Color1    Color2    Speed      Reverse Segment
+{ /*Engine*/	"le",  FX_STATIC,  FXParams(false, 0x000040, 0x004000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Engine, &NeoBus)    },
+{ /*Landing*/	"ll",  FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Landing, &NeoBus)   },
+{ /*Warning*/	"lw",  FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Warning, &NeoBus)   },
+{ /*Headlight*/ "ld",  FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Headlight, &NeoBus) },
+{ /*Gunwell*/   "lg",  FX_STATIC,  FXParams(false, 0x804040, 0x000000, DEF_SPEED, false), new FXStripSegRange(0, &NeoBus)                 },
+{ /*Ramp*/      "lr",  FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(3, &NeoBus)                 },
+{ /*Sconce*/    "lts", FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Sconce, &NeoBus)    },
+{ /*Floor*/     "ltf", FX_STATIC,  FXParams(false, 0x004040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Floor, &NeoBus)     },
+{ /*Bay*/	    "lhy", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(55, 56, &NeoBus)            },
+{ /*Bed*/       "lhb", FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Monitor)          },
+{ /*Grates*/    "lhg", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(53, 54, &NeoBus)            },
+{ /*Monitor*/   "lhm", FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Bed)              },
+{ /*Red*/	    "lh0", FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegRange(49, &NeoBus)                },
+{ /*Green*/	    "lh1", FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegRange(51, &NeoBus)                },
+{ /*Blue*/	    "lh2", FX_STATIC,  FXParams(false, 0x000040, 0x000000, DEF_SPEED, false), new FXStripSegRange(52, &NeoBus)                },
+{ /*Yellow*/    "lh3", FX_STATIC,  FXParams(false, 0x004040, 0x000000, DEF_SPEED, false), new FXStripSegRange(50, &NeoBus)                },
+{ /*Monitor*/   "lcm", FX_BLINK,   FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Cockpit_Monitor)       },
+{ /*Red*/	    "lc0", FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegRange(37, &NeoBus)                },
+{ /*Green*/	    "lc1", FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegRange(35, &NeoBus)                },
+{ /*Blue*/	    "lc2", FX_STATIC,  FXParams(false, 0x000040, 0x000000, DEF_SPEED, false), new FXStripSegRange(36, &NeoBus)                },
+{ /*Yellow*/    "lc3", FX_STATIC,  FXParams(false, 0x404000, 0x000000, DEF_SPEED, false), new FXStripSegRange(38, &NeoBus)                },
+{ /*WallUL*/    "lc4", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(41, &NeoBus)                },
+{ /*WallUR*/    "lc5", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(40, &NeoBus)                },
+{ /*WallLL*/    "lc6", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(43, &NeoBus)                },
+{ /*WallLR*/    "lc7", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(39, &NeoBus)                },
+{ /*Test Neo*/  "lz",  FX_BLINK,   FXParams(true,  0x000040, 0x004000, DEF_SPEED, false), new FXStripSegRange(0, &NeoOne)                 },
 };
 
-class Light : public OMObject
+void GroupConnector::Push(OMObject *obj, OMProperty *prop)
 {
-    class LPropAnim : public OMPropertyLong
+    // only one property
+    // all lights in the group turned on or off
+    bool value = ((OMPropertyBool *)prop)->Value;
+    for (auto o : obj->Objects)
     {
-    public:
-        LPropAnim() {}
-    
-        char GetID() { return 'a'; }
-        const char* GetName() { return "Anim"; }
-    
-        long GetMin() { return 0; }
-        long GetMax() { return FX_COUNT - 1; }
-    
-        void Set(long value)
+        auto p = (OMPropertyBool *)o->GetProperty('o');
+        p->Set(value);
+    }
+}
+
+void GroupConnector::Pull(OMObject *obj, OMProperty *prop)
+{
+    // only one property
+    // set On if any in the group are On
+    for (auto o : obj->Objects)
+    {
+        auto p = (OMPropertyBool *)o->GetProperty('o');
+        if (p->Value)
         {
-            if (!TestRange(value) || Def()->Anim == value)
-                return;
-            Changed = true;
+            ((OMPropertyBool *)prop)->Value = true;
+            return;
+        }
+    }
+    ((OMPropertyBool *)prop)->Value = false;
+}
+
+void LightConnector::Init(OMObject* obj)
+{
+    obj->Data = nullptr;
+    auto path = obj->GetPath();
+    for (int i = 0; i < sizeof(LightDefs) / sizeof(LightDefs[0]); i++)
+    {
+        if (path == LightDefs[i].Path)
+        {
+            obj->Data = &LightDefs[i];
+            break;
+        }
+    }
+    if (!obj->Data)
+        floge("path not found: %s", path);
+}
+
+void LightConnector::Push(OMObject* obj, OMProperty* prop)
+{
+    auto def = (LightDef*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
+    {
+    case 'o':   // Light on/off
+        def->Params.On = ((OMPropertyBool*)prop)->Value;
+        fxServer.GetEffect(def->SegId)->Reset();
+        break;
+    case 'a':   // Animation effect
+        {
             // create the new effect by index/id
-            auto newEffect = fxFactory.CreateEffect((uint8_t)value, Def()->Seg, &Def()->Params);
+            auto value = ((OMPropertyLong*)prop)->Value;
+            auto newEffect = fxFactory.CreateEffect((uint8_t)value, def->Seg, &def->Params);
             if (!newEffect)
             {
                 floge("invalid Light animation value: [%d]", value);
                 return;
             }
-            Def()->Anim = value;
+            def->Anim = value;
             // setting the effect copies the Params pointer and resets the effect
-            auto oldEffect = fxServer.SetEffect(((Light*)Parent)->SegId, newEffect);
+            auto oldEffect = fxServer.SetEffect(def->SegId, newEffect);
             delete oldEffect;
         }
-    
-        long Get() { return Def()->Anim; }
-    private:
-        LightDef* Def() { return ((Light*)Parent)->Def; }
-    };
-    
-    class LPropOn : public OMPropertyBool
-    {
-    public:
-        LPropOn() {}
-    
-        char GetID() { return 'o'; }
-        const char* GetName() { return "On"; }
-    
-        void Set(bool value)
+        break;
+    case 'c':   // Color1
+    case 'd':   // Color2
         {
-            if (Def()->Anim != FX_COUNT)
-            {
-                // normal Light on/off
-                if (Def()->Params.On == value)
-                    return;
-                Changed = true;
-                Def()->Params.On = value;
-                auto effect = fxServer.GetEffect(((Light*)Parent)->SegId);
-                effect->Reset();
-            }
-            else
-            {
-                // group on/off
-                Def()->Params.On = value;
-                // all lights in the group turned on or off
-                for (auto o : ((Light*)Parent)->Objects)
-                {
-                    auto p = (LPropOn*)o->GetProperty('o');
-                    p->Set(value);
-                }
-            }
+            uint32_t& v = id == 'c' ? def->Params.Color0 : def->Params.Color1;
+            v = ((OMPropertyLong*)prop)->Value;
+            fxServer.GetEffect(def->SegId)->Reset();
         }
-    
-        bool Get() { return Def()->Params.On; }
-    private:
-        LightDef* Def() { return ((Light*)Parent)->Def; }
-    };
-    
-    class LPropColor : public OMPropertyLong
-    {
-    public:
-        LPropColor(u_int8_t inx) : Inx(inx) {}
-        char GetID() { return Inx == 0 ? 'c' : 'd'; }
-        const char* GetName() { return Inx == 0 ? "Color0" : "Color1"; }
-    
-        long GetMin() { return 0; }
-        long GetMax() { return 0xFFFFFF; }
-        uint8_t GetBase() { return HEX; }
-    
-        void Set(long value)
-        {
-            uint32_t& v = Inx == 0 ? Def()->Params.Color0 : Def()->Params.Color1;
-            if (!TestRange(value) || v == value)
-                return;
-            Changed = true;
-            v = value;
-            // reset the effect after parameter change
-            fxServer.GetEffect(((Light*)Parent)->SegId)->Reset();
-        }
-    
-        long Get() { return Inx == 0 ? Def()->Params.Color0 : Def()->Params.Color1; }
-    private:
-        LightDef* Def() { return ((Light*)Parent)->Def; }
-        u_int8_t Inx;
-    };
-    
-    class LPropSpeed : public OMPropertyLong
-    {
-    public:
-        LPropSpeed() {}
-    
-        char GetID() { return 's'; }
-        const char* GetName() { return "Speed"; }
-    
-        long GetMin() { return 0; }
-        long GetMax() { return 60000; }
-    
-        void Set(long value)
-        {
-            if (!TestRange(value) || Def()->Params.Speed == value)
-                return;
-            Changed = true;
-            Def()->Params.Speed = value;
-            // reset the effect after parameter change
-            fxServer.GetEffect(((Light*)Parent)->SegId)->Reset();
+        break;
+    case 's':   // effect speed
+        def->Params.Speed = ((OMPropertyLong*)prop)->Value;
+        fxServer.GetEffect(def->SegId)->Reset();
+        break;
+    case 'r':   // effect reverse
+        def->Params.Reverse = ((OMPropertyBool*)prop)->Value;
+        fxServer.GetEffect(def->SegId)->Reset();
+        break;
     }
-    
-        long Get() { return Def()->Params.Speed; }
-    private:
-        LightDef* Def() { return ((Light*)Parent)->Def; }
-    };
-    
-    class LPropReverse : public OMPropertyBool
+}
+
+void LightConnector::Pull(OMObject *obj, OMProperty *prop)
+{
+    auto def = (LightDef*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
-    public:
-        LPropReverse() {}
-    
-        char GetID() { return 'r'; }
-        const char* GetName() { return "Reverse"; }
-    
-        void Set(bool value)
-        {
-            if (Def()->Params.Reverse == value)
-                return;
-            Changed = true;
-            Def()->Params.Reverse = value;
-            fxServer.GetEffect(((Light*)Parent)->SegId)->Reset();
-        }
-    
-        bool Get() { return Def()->Params.Reverse; }
-    private:
-        LightDef* Def() { return ((Light*)Parent)->Def; }
-    };
-    
-public:
-    Light(LightDef* def, uint8_t segId) : Def(def), SegId(segId)
-    {
-        if (def->Anim != FX_COUNT)
-        {
-            // normal Light node with properties
-            AddProperty(new LPropAnim());
-            AddProperty(new LPropOn());
-            AddProperty(new LPropColor(0));
-            AddProperty(new LPropColor(1));
-            AddProperty(new LPropSpeed());
-            AddProperty(new LPropReverse());
-        }
-        else
-        {
-            // group Light node with only 'On' property to effect all children
-            AddProperty(new LPropOn());
-        }
+    case 'o':   // Light on/off
+        ((OMPropertyBool*)prop)->Value = def->Params.On;
+        break;
+    case 'a':   // Animation effect
+        ((OMPropertyLong*)prop)->Value = def->Anim;
+        break;
+    case 'c':   // Color1
+    case 'd':   // Color2
+        ((OMPropertyLong*)prop)->Value = id == 'c' ? def->Params.Color0 : def->Params.Color1;
+        break;
+    case 's':   // effect speed
+        ((OMPropertyLong*)prop)->Value = def->Params.Speed;
+        break;
+    case 'r':   // effect reverse
+        ((OMPropertyBool*)prop)->Value = def->Params.Reverse;
+        break;
     }
-    char GetID() { return Def->Id; }
-    const char* GetName() { return Def->Name; }
-    void Setup(){}
-    void Run(){}
-    uint8_t SegId;
-private:
-    LightDef* Def;
-};
+}
+
+GroupConnector GroupConn;
+LightConnector LightConn;
+
+Lights Lights::lights;
 
 void Lights::Setup()
 {
@@ -282,37 +212,20 @@ void Lights::Setup()
     // register all std effects, mapping them to std indices
     fxFactory.RegisterEffects(stdEffectsList, sizeof(stdEffectsList) / sizeof(stdEffectsList[0]));
 
-    auto par = (OMObject*)this;
 	for (int i = 0; i < sizeof(LightDefs) / sizeof(LightDefs[0]); i++)
     {
         LightDef* def = &LightDefs[i];
-        if (def->Id == 0)
+        def->SegId = i;
+        // add the segment to the server for this Light
+        // and create the initial effect from the std index/id
+        auto effect = fxFactory.CreateEffect(def->Anim, def->Seg, &def->Params);
+        if (!effect)
         {
-            // leaving group node, parent returns to Lights
-            par = this;
+            floge("missing effect %d", def->Anim);
             continue;
         }
-        // need a unique id for segment registration; the index will suffice
-        auto child = new Light(def, i);
-        par->AddObject(child);
-        if (def->Anim == FX_COUNT)
-        {
-            // entering group node (not an actual light) which becomes parent to following nodes
-            par = child;
-        }
-        else
-        {
-            // add the segment to the server for this Light
-            // and create the initial effect from the std index/id
-            auto effect = fxFactory.CreateEffect(def->Anim, def->Seg, &def->Params);
-            if (!effect)
-            {
-                floge("missing effect %d", def->Anim);
-                continue;
-            }
-            // the FXServer uses the segment Id, NOT the effect Id
-            fxServer.AddSegment(i, def->Seg, effect);
-        }
+        // the FXServer uses the segment Id, NOT the effect Id
+        fxServer.AddSegment(i, def->Seg, effect);
     }
 
     flogv("FX start");

@@ -1,9 +1,8 @@
 #pragma once
-
-#include "Metronome.h"
 #include "OMObject.h"
+#include "Metronome.h"
 
-class DebugConnector : public OMConnector
+class SoundConnector : public OMConnector
 {
 public:
     void Init(OMObject *obj) override;
@@ -11,23 +10,24 @@ public:
     void Pull(OMObject *obj, OMProperty *prop) override;
 };
 
-extern DebugConnector DebugConn;
+extern SoundConnector SoundConn;
 
-class Debug
+class Sound
 {
 public:
-	void        Setup();
-	void        Run();
-    OMObject*   DebugObject;
+	void		    Setup();
+	void		    Run();
+    void            Play(String fileName);
+    OMObject*       SoundObject;
     // get singleton instance
-    static Debug& GetInstance() { return debug; }
+    static Sound& GetInstance() { return sound; }
     // Delete copy constructor and assignment operator to prevent copying singleton
-    Debug(const Debug&) = delete;
-    Debug& operator=(const Debug&) = delete;
+    Sound(const Sound&) = delete;
+    Sound& operator=(const Sound&) = delete;
 private:
     // Static member variable to hold the single instance
-    static Debug debug;
+    static Sound sound;
     // private constructor for singleton
-	Debug() : Metro(100) { };
+	Sound() : Metro(2000) { };
 	Metronome	Metro;
 };

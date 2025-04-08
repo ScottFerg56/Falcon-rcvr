@@ -9,87 +9,55 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 #define MIN_SPEED	155
 #define MAX_SPEED	255
 
-class RPropState : public OMProperty
+Ramp Ramp::ramp;
+
+void RampConnector::Init(OMObject* obj)
 {
-public:
-    RPropState() {}
+    auto ramp = &Ramp::GetInstance();
+    obj->Data = ramp;
+    ramp->RampObject = obj;
+}
 
-    char                GetID() { return 's'; }
-    const char*         GetName() { return "State"; }
-    virtual OMT         GetType() { return OMT_CHAR; }
-    const char* levelIDs = "RrSeE";
-
-    virtual void ToString(String& s)
-    {
-        s.concat(levelIDs[Get()]);
-    }
-
-    virtual bool FromString(String& s)
-    {
-        char c = toupper(s[0]);
-        auto p = strchr(levelIDs, c);
-        if (!p)
-        {
-            floge("invalid State value: [%c]", c);
-            return false;
-        }
-        int l = p - levelIDs;
-        if (l > Ramp::Extended)
-        {
-            floge("invalid State value: [%c]", c);
-            return false;
-        }
-        flogd("set state  %c  %d", c, l);
-        Set(l);
-        flogd("state value  %d", Get());
-        s.remove(0, 1);
-        return true;
-    }
-
-    void Set(long value)
-    {
-        Rmp()->SetState((Ramp::RampStates)value);
-    }
-
-    long Get() { return Rmp()->RampState; }
-private:
-    Ramp* Rmp() { return (Ramp*)Parent; }
-};
-
-class RPropSpeed : public OMPropertyLong
+void RampConnector::Push(OMObject* obj, OMProperty* prop)
 {
-public:
-    RPropSpeed() {}
-
-    char GetID() { return 'v'; }
-    const char* GetName() { return "Speed"; }
-
-    long GetMin() { return 0; }
-    long GetMax() { return 100; }
-
-    void Set(long value)
+    auto ramp = (Ramp*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
-        if (!TestRange(value))
-            return;
-        // convert speed range from [0-100]
-        value = map(value, 0, 100, MIN_SPEED, MAX_SPEED);
-        if (Rmp()->Speed == value)
-            return;
-        Changed = true;
-        // myMotor->setSpeed(Speed);
-        flogd("Ramp speed: %d", value);
+    case 's':   // state
+        ramp->SetState((Ramp::RampStates)((OMPropertyChar*)prop)->Index());
+        break;
+    case 'v':   // speed
+        {
+            // convert speed range from [0-100]
+            auto speed = map(((OMPropertyLong*)prop)->Value, 0, 100, MIN_SPEED, MAX_SPEED);
+            ramp->SetSpeed(speed);
+            flogd("Ramp speed: %d", ((OMPropertyLong*)prop)->Value);
+        }
+        break;
     }
+}
 
-    long Get()
+void RampConnector::Pull(OMObject *obj, OMProperty *prop)
+{
+    auto ramp = (Ramp*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
+    case 's':   // state
+        ((OMPropertyChar*)prop)->Value = ((OMPropertyChar*)prop)->Valid[ramp->RampState];
+        // flogv("pulled: %c", ((OMPropertyChar*)prop)->Value);
+        break;
+    case 'v':   // speed
         // convert speed range to [0-100]
-        uint8_t speed = map(Rmp()->Speed, MIN_SPEED, MAX_SPEED, 0, 100);
-        return speed;
+        ((OMPropertyLong*)prop)->Value = map(ramp->GetSpeed(), MIN_SPEED, MAX_SPEED, 0, 100);
+        break;
     }
+}
 
-private:
-    Ramp* Rmp() { return (Ramp*)Parent; }
-};
+RampConnector RampConn;
+
+extern Root root;
 
 void Ramp::SetState(RampStates state)
 {
@@ -150,7 +118,7 @@ void Ramp::SetState(RampStates state)
     }
 
     // notify of state change
-    GetProperty('s')->Changed = true;
+    RampObject->GetProperty('s')->Pull(true);
 }
 
 bool Ramp::RampRetracted() { return !digitalRead(Pin_RetractedLimitSW); }
@@ -158,8 +126,6 @@ bool Ramp::RampExtended() { return  !digitalRead(Pin_ExtendedLimitSW); }
 
 void Ramp::Setup()
 {
-    AddProperty(new RPropState());
-    AddProperty(new RPropSpeed());
 	// set inputs for limit switches
 	pinMode(Pin_RetractedLimitSW, INPUT_PULLUP);
 	pinMode(Pin_ExtendedLimitSW, INPUT_PULLUP);

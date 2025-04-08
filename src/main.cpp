@@ -2,7 +2,7 @@
 #include "Debug.h"
 #include "Lights.h"
 #include "Rectenna.h"
-#include "Sounds.h"
+#include "Sound.h"
 #include "Ramp.h"
 #include <esp_now.h>
 #include <WiFi.h>
@@ -57,6 +57,9 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
     }
   }
 
+#include "OMDef.h"
+
+
 void setup()
 {
     // nvs_flash_erase();      // erase the NVS partition and...
@@ -65,15 +68,8 @@ void setup()
     Serial.begin(115200);
     delay(2000);
     FLogger::setLogLevel(FLOG_VERBOSE);
+    flogv("Falcon rcvr " __DATE__ " " __TIME__);
     // FLogger::setPrinter(flog_printer);
-    root.AddObject(new Debug());
-    root.AddObject(new Sounds());
-    // I2S audio initialization seems to mess with PIN_NEOPIXEL (pin 0).
-    // So we need to setup Sounds first BEFORE Lights setup fixes pin 0!
-    // Using that order, both seem to work properly.
-    root.AddObject(new Lights());
-    root.AddObject(new Ramp());
-    root.AddObject(new Rectenna());
 
     root.SetSend([](String cmd) { Agent::GetInstance().SendCmd(cmd); });
 
@@ -91,19 +87,33 @@ void setup()
     Agent::GetInstance().Setup(&SPIFFS, peerMacAddress, [](String cmd) { root.Command(cmd); });
 
     root.Setup();
+    Rectenna::GetInstance().Setup();
+    Ramp::GetInstance().Setup();
+    Sound::GetInstance().Setup();
+    // I2S audio initialization seems to mess with PIN_NEOPIXEL (pin 0).
+    // So we need to setup Sounds first BEFORE Lights setup fixes pin 0!
+    // Using that order, both seem to work properly.
+    Lights::GetInstance().Setup();
+    Debug::GetInstance().Setup();
+    root.AddObjects(Objects);
     flogv("Setup done");
 }
 
 void loop()
 {
     root.Run();
+    Rectenna::GetInstance().Run();
+    Ramp::GetInstance().Run();
+    Sound::GetInstance().Run();
+    Lights::GetInstance().Run();
+    Debug::GetInstance().Run();
+
     if (!Agent::GetInstance().FileReceived.isEmpty())
     {
         // flogv("File transfer complete");
-        ((Sounds*)root.GetObject('s'))->Play(Agent::GetInstance().FileReceived);
+        Sound::GetInstance().Play(Agent::GetInstance().FileReceived);
         Agent::GetInstance().FileReceived = "";
     }
 
     Agent::GetInstance().Loop();
-
 }

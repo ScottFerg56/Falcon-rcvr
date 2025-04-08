@@ -2,85 +2,55 @@
 #include "Rectenna.h"
 #include "FLogger.h"
 
-class APropSpeed : public OMPropertyLong
+Rectenna Rectenna::rectenna;
+
+void RectennaConnector::Init(OMObject* obj)
 {
-public:
-    APropSpeed() {}
+    obj->Data = &Rectenna::GetInstance();
+}
 
-    char GetID() { return 'v'; }
-    const char* GetName() { return "Speed"; }
-
-    long GetMin() { return 0; }
-    long GetMax() { return 100; }
-
-    void Set(long value)
-    {
-        if (!TestRange(value) || Rect()->Speed == value)
-            return;
-        Rect()->Speed = value;
-        Changed = true;
-        Rect()->SetClock();
-        flogd("Rectenna speed: %d", value);
-    }
-
-    long Get() { return Rect()->Speed; }
-
-private:
-    Rectenna* Rect() { return (Rectenna*)Parent; }
-};
-
-class APropSweep : public OMPropertyBool
+void RectennaConnector::Push(OMObject* obj, OMProperty* prop)
 {
-public:
-    APropSweep() {}
-
-    char GetID() { return 's'; }
-    const char* GetName() { return "Sweep"; }
-
-    void Set(bool value)
+    auto rect = (Rectenna*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
-        if (Rect()->GetSweep() == value)
-            return;
-        Rect()->SetSweep(value);
-        Changed = true;
+    case 's':   // sweep
+        rect->SetSweep(((OMPropertyBool*)prop)->Value);
+        break;
+    case 'v':   // speed
+        rect->Speed = ((OMPropertyLong*)prop)->Value;
+        rect->SetClock();
+        flogd("Rectenna speed: %d", rect->Speed);
+        break;
+    case 'p':   // position
+        rect->SetPosition(((OMPropertyLong*)prop)->Value);
+        break;
     }
+}
 
-    bool Get() { return Rect()->GetSweep(); }
-private:
-    Rectenna* Rect() { return (Rectenna*)Parent; }
-};
-
-class APropPosition : public OMPropertyLong
+void RectennaConnector::Pull(OMObject *obj, OMProperty *prop)
 {
-public:
-    APropPosition() {}
-
-    char GetID() { return 'p'; }
-    const char* GetName() { return "Position"; }
-
-    long GetMin() { return 0; }
-    long GetMax() { return 100; }
-
-    void Set(long value)
+    auto rect = (Rectenna*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
-        if (!TestRange(value) || Rect()->GetPosition() == value)
-            return;
-        Rect()->SetPosition(value);
-        Changed = true;
+    case 's':   // sweep
+        ((OMPropertyBool*)prop)->Value = rect->GetSweep();
+        break;
+    case 'v':   // speed
+        ((OMPropertyLong*)prop)->Value = rect->Speed;
+        break;
+    case 'p':   // position
+        ((OMPropertyLong*)prop)->Value = rect->GetPosition();
+        break;
     }
+}
 
-    long Get() { return Rect()->GetPosition(); }
-
-private:
-    Rectenna* Rect() { return (Rectenna*)Parent; }
-};
+RectennaConnector RectennaConn;
 
 void Rectenna::Setup()
 {
-    AddProperty(new APropSpeed());
-    AddProperty(new APropSweep());
-    AddProperty(new APropPosition());
-
 	ESP32PWM::allocateTimer(0);
 	ESP32PWM::allocateTimer(1);
 	ESP32PWM::allocateTimer(2);
@@ -93,7 +63,6 @@ int Rectenna::GetPosition()
 {
 	// convert position range [0-180] to [0-100]
     return map(rectPos, 0, 180, 0, 100);
-	// return (uint32_t)round(((float)rectPos / 180) * 100);
 }
 
 void Rectenna::SetPosition(int position)

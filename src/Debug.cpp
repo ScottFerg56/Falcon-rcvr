@@ -1,56 +1,43 @@
 #include "Debug.h"
 #include "Agent.h"
 
-class DPropLogLevel : public OMProperty
+DebugConnector DebugConn;
+Debug Debug::debug;
+
+void DebugConnector::Init(OMObject* obj)
 {
-public:
-    DPropLogLevel() {}
+    auto debug = &Debug::GetInstance();
+    obj->Data = debug;
+    debug->DebugObject = obj;
+}
 
-    char                GetID() { return 'l'; }
-    const char*         GetName() { return "LogLevel"; }
-    virtual OMT         GetType() { return OMT_CHAR; }
-    const char* levelIDs = "NFEWIDV";
-
-    virtual void ToString(String& s)
+void DebugConnector::Push(OMObject* obj, OMProperty* prop)
+{
+    auto debug = (Debug*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
-        s.concat(levelIDs[Get()]);
+    case 'l':   // LogLevel
+        FLogger::setLogLevel((flog_level)((OMPropertyChar*)prop)->Index());
+        break;
     }
+}
 
-    virtual bool FromString(String& s)
+void DebugConnector::Pull(OMObject *obj, OMProperty *prop)
+{
+    auto debug = (Debug*)obj->Data;
+    auto id = prop->GetID();
+    switch (id)
     {
-        char c = toupper(s[0]);
-        auto p = strchr(levelIDs, c);
-        if (!p)
-        {
-            floge("invalid LogLevel value: [%c]", c);
-            return false;
-        }
-        int l = p - levelIDs;
-        if (l > FLOG_VERBOSE)
-        {
-            floge("invalid LogLevel value: [%c]", c);
-            return false;
-        }
-        Set(l);
-        s.remove(0, 1);
-        return true;
+    case 'l':   // LogLevel
+        ((OMPropertyChar*)prop)->Value = ((OMPropertyChar*)prop)->Valid[FLogger::getLogLevel()];
+        break;
     }
-
-    void Set(long value)
-    {
-        if (FLogger::getLogLevel() == value)
-            return;
-        FLogger::setLogLevel((flog_level)value);
-        Changed = true;
-    }
-
-    long Get() { return FLogger::getLogLevel(); }
-};
+}
 
 void Debug::Setup()
 {
-    AddProperty(new DPropLogLevel());
-    flogv("Falcon rcvr " __DATE__ " " __TIME__);
+    flogv("Debug setup");
 }
 
 void Debug::Run()
@@ -77,7 +64,7 @@ void Debug::Run()
                         if (cmd[0] == '|')
                         {
                             // pipe a command to our peer
-                            ((Root*)Parent)->SendPacket(cmd.substring(1));
+                            ((Root*)(DebugObject->MyRoot()))->SendCmd(cmd.substring(1));
                         }
                         else if (cmd[0] == 'x')
                         {
@@ -87,7 +74,7 @@ void Debug::Run()
                         else
                         {
                             // command for ourself
-                            ((Root*)Parent)->Command(cmd);
+                            ((Root*)(DebugObject->MyRoot()))->Command(cmd);
                         }
                     }
                     cmd.clear();
