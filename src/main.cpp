@@ -9,7 +9,26 @@
 #include "SPIFFS.h"
 #include "Agent.h"
 
-Root root;
+class FRoot : public Root
+{
+public:
+	FRoot() : Root('R', "Root", nullptr) { }
+    void    ReceivedFile(String fileName) override { FileReceived = fileName; }
+    void	Run() override
+    {
+        Root::Run();
+        if (!FileReceived.isEmpty())
+        {
+            // flogv("File transfer complete");
+            Sound::GetInstance().Play(FileReceived);
+            FileReceived = "";
+        }
+    }
+private:
+    String FileReceived;
+};
+
+FRoot root;
 
 // #include <nvs_flash.h>
 
@@ -21,8 +40,7 @@ int flog_printer(const char* s)
 {
     int len = Serial.print(s);
     // echo the message to the esp_now peer
-    len = strlen(s);
-    Agent::GetInstance().SendData((uint8_t*)s, len);
+    Agent::GetInstance().Send(s);
     return len;
 }
 
@@ -71,8 +89,6 @@ void setup()
     flogv("Falcon rcvr " __DATE__ " " __TIME__);
     // FLogger::setPrinter(flog_printer);
 
-    root.SetSend([](String cmd) { Agent::GetInstance().SendCmd(cmd); });
-
     if (!SPIFFS.begin())
     {
         floge("SPIFFS init error");
@@ -84,9 +100,9 @@ void setup()
         Serial.printf("Used space: %lu\n", SPIFFS.usedBytes());
     }
 
-    Agent::GetInstance().Setup(&SPIFFS, peerMacAddress, [](String cmd) { root.Command(cmd); });
+    Agent::GetInstance().Setup(&SPIFFS, peerMacAddress, &root);
 
-    root.Setup();
+    root.Setup(&Agent::GetInstance());
     Rectenna::GetInstance().Setup();
     Ramp::GetInstance().Setup();
     Sound::GetInstance().Setup();
@@ -107,13 +123,5 @@ void loop()
     Sound::GetInstance().Run();
     Lights::GetInstance().Run();
     Debug::GetInstance().Run();
-
-    if (!Agent::GetInstance().FileReceived.isEmpty())
-    {
-        // flogv("File transfer complete");
-        Sound::GetInstance().Play(Agent::GetInstance().FileReceived);
-        Agent::GetInstance().FileReceived = "";
-    }
-
     Agent::GetInstance().Loop();
 }
