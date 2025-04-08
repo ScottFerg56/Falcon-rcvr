@@ -1,5 +1,5 @@
 #include "Debug.h"
-#include "Agent.h"
+#include "ESPNAgent.h"
 
 DebugConnector DebugConn;
 Debug Debug::debug;
@@ -69,7 +69,7 @@ void Debug::Run()
                         else if (cmd[0] == 'x')
                         {
                             // file transfer
-                            Agent::GetInstance().StartFileTransfer("/Sad R2D2.mp3");
+                            ESPNAgent::PrimaryAgent()->StartFileTransfer("/Sad R2D2.mp3");
                         }
                         else
                         {

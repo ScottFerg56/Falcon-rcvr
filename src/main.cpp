@@ -7,7 +7,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include "SPIFFS.h"
-#include "Agent.h"
+#include "ESPNAgent.h"
 
 class FRoot : public Root
 {
@@ -29,6 +29,7 @@ private:
 };
 
 FRoot root;
+ESPNAgent agent(&SPIFFS, &root);
 
 // #include <nvs_flash.h>
 
@@ -40,7 +41,7 @@ int flog_printer(const char* s)
 {
     int len = Serial.print(s);
     // echo the message to the esp_now peer
-    Agent::GetInstance().Send(s);
+    agent.SendCmd(s);
     return len;
 }
 
@@ -100,9 +101,9 @@ void setup()
         Serial.printf("Used space: %lu\n", SPIFFS.usedBytes());
     }
 
-    Agent::GetInstance().Setup(&SPIFFS, peerMacAddress, &root);
+    agent.Setup(peerMacAddress);
 
-    root.Setup(&Agent::GetInstance());
+    root.Setup(&agent);
     Rectenna::GetInstance().Setup();
     Ramp::GetInstance().Setup();
     Sound::GetInstance().Setup();
@@ -123,5 +124,5 @@ void loop()
     Sound::GetInstance().Run();
     Lights::GetInstance().Run();
     Debug::GetInstance().Run();
-    Agent::GetInstance().Loop();
+    agent.Run();
 }
