@@ -12,7 +12,7 @@
 class FRoot : public Root
 {
 public:
-	FRoot() : Root('R', "Root", nullptr) { }
+	FRoot(bool isDevice) : Root(isDevice, 'R', "Root", nullptr) { }
     void    ReceivedFile(String fileName) override { FileReceived = fileName; }
     void	Run() override
     {
@@ -28,7 +28,7 @@ private:
     String FileReceived;
 };
 
-FRoot root;
+FRoot root(true);   // this is the device to be controlled
 ESPNAgent agent(&SPIFFS, &root);
 
 // #include <nvs_flash.h>
