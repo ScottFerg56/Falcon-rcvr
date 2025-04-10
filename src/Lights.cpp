@@ -90,7 +90,12 @@ void GroupConnector::Push(OMObject *obj, OMProperty *prop)
     for (auto o : obj->Objects)
     {
         auto p = (OMPropertyBool *)o->GetProperty('o');
+        if (p->Value == value)
+            continue;
+        // push the value to the light
         p->Set(value);
+        // update the controller
+        p->Send();
     }
 }
 
@@ -133,8 +138,22 @@ void LightConnector::Push(OMObject* obj, OMProperty* prop)
     switch (id)
     {
     case 'o':   // Light on/off
-        def->Params.On = ((OMPropertyBool*)prop)->Value;
-        fxServer.GetEffect(def->SegId)->Reset();
+        {
+            def->Params.On = ((OMPropertyBool*)prop)->Value;
+            fxServer.GetEffect(def->SegId)->Reset();
+            auto group = (OMObject*)obj->Parent;
+            if (group->Properties.size() == 1)
+            {
+                // in a group
+                auto pOn = ((OMPropertyBool *)group->GetProperty('o'));
+                bool wasOn = pOn->Value;
+                // let the group decide if it should still be on
+                pOn->Pull();
+                // send the value if it changed
+                if (pOn->Value != wasOn)
+                    pOn->Send();
+            }
+        }
         break;
     case 'a':   // Animation effect
         {

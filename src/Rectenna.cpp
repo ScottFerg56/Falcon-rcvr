@@ -6,7 +6,9 @@ Rectenna Rectenna::rectenna;
 
 void RectennaConnector::Init(OMObject* obj)
 {
-    obj->Data = &Rectenna::GetInstance();
+    auto rect = &Rectenna::GetInstance();
+    obj->Data = rect;
+    rect->RectennaObject = obj;
 }
 
 void RectennaConnector::Push(OMObject* obj, OMProperty* prop)
@@ -86,6 +88,8 @@ void Rectenna::SetSweep(bool onOff)
 	if (GetSweep() == onOff)
 		return;
 	SetState(onOff ? SweepingCW : Stopped); // LastSweepState
+    if (!onOff)
+        ((OMPropertyLong*)(RectennaObject->GetProperty('p')))->SetSend(GetPosition());
 }
 
 void Rectenna::SetClock()
@@ -97,8 +101,7 @@ void Rectenna::SetClock()
 
 void Rectenna::SetState(RectStates state)
 {
-	if (GetSweep())
-		LastSweepState = RectState;
+	auto sweep = GetSweep();
 	RectState = state;
 	switch (state)
 	{
@@ -118,6 +121,11 @@ void Rectenna::SetState(RectStates state)
 	default:
 		break;
 	}
+    if (sweep != GetSweep())
+    {
+        // if state change affects Sweep, notify the controller
+        ((OMPropertyBool*)(RectennaObject->GetProperty('s')))->SetSend(GetSweep());
+    }
 }
 
 void Rectenna::Run()

@@ -27,6 +27,8 @@ public:
 	void		SetSweep(bool onOff);
 	int			GetPosition();
 	void		SetPosition(int position);
+    OMObject*   RectennaObject;
+    // get singleton instance
     static Rectenna& GetInstance() { return rectenna; }
     // Delete copy constructor and assignment operator to prevent copying singleton
     Rectenna(const Rectenna&) = delete;
@@ -40,7 +42,6 @@ private:
 
 	Metronome	Metro;
 	RectStates	RectState = Stopped;
-	RectStates	LastSweepState = SweepingCW;
 	Servo		rectServo;
 	int 		rectPos = -1;
 };

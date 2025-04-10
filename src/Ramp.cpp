@@ -45,7 +45,7 @@ void RampConnector::Pull(OMObject *obj, OMProperty *prop)
     switch (id)
     {
     case 's':   // state
-        ((OMPropertyChar*)prop)->Value = ((OMPropertyChar*)prop)->Valid[ramp->RampState];
+        ((OMPropertyChar*)prop)->Value = ((OMPropertyChar*)prop)->FromIndex(ramp->RampState);
         // flogv("pulled: %c", ((OMPropertyChar*)prop)->Value);
         break;
     case 'v':   // speed
@@ -118,7 +118,8 @@ void Ramp::SetState(RampStates state)
     }
 
     // notify of state change
-    RampObject->GetProperty('s')->Pull(true);
+    auto prop = (OMPropertyChar*)(RampObject->GetProperty('s'));
+    prop->SetSend(prop->FromIndex(RampState));
 }
 
 bool Ramp::RampRetracted() { return !digitalRead(Pin_RetractedLimitSW); }

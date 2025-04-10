@@ -103,7 +103,6 @@ void setup()
 
     agent.Setup(peerMacAddress);
 
-    root.Setup(&agent);
     Rectenna::GetInstance().Setup();
     Ramp::GetInstance().Setup();
     Sound::GetInstance().Setup();
@@ -112,7 +111,9 @@ void setup()
     // Using that order, both seem to work properly.
     Lights::GetInstance().Setup();
     Debug::GetInstance().Setup();
+    
     root.AddObjects(Objects);
+    root.Setup(&agent);
     flogv("Setup done");
 }
 

@@ -30,7 +30,7 @@ void DebugConnector::Pull(OMObject *obj, OMProperty *prop)
     switch (id)
     {
     case 'l':   // LogLevel
-        ((OMPropertyChar*)prop)->Value = ((OMPropertyChar*)prop)->Valid[FLogger::getLogLevel()];
+        ((OMPropertyChar*)prop)->Value = ((OMPropertyChar*)prop)->FromIndex(FLogger::getLogLevel());
         break;
     }
 }
