@@ -19,6 +19,7 @@ public:
 	void		    Run();
     void            Play(String fileName);
     OMObject*       SoundObject;
+    std::vector<String> Sounds;
     // get singleton instance
     static Sound& GetInstance() { return sound; }
     // Delete copy constructor and assignment operator to prevent copying singleton

@@ -9,6 +9,33 @@ Sound Sound::sound;
 
 Audio audio;
 
+std::vector<String> SoundFiles()
+{
+    std::vector<String> files;
+    File root = SPIFFS.open("/", 0);
+    if (!root)
+    {
+        floge("Failed to open root directory");
+        return files;
+    }
+    File file = root.openNextFile();
+    while (file)
+    {
+        if (!file.isDirectory())
+        {
+            String name(file.name());
+            if (name.endsWith(".mp3"))
+            {
+                name.remove(name.length() - 4);
+                files.push_back(name);
+            }
+        }
+        file = root.openNextFile();
+    }
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
 void SoundConnector::Init(OMObject* obj)
 {
     auto sound = &Sound::GetInstance();
@@ -24,8 +51,8 @@ void SoundConnector::Push(OMObject* obj, OMProperty* prop)
     {
     case 'p':   // play
         {
-            // UNDONE:
-            sound->Play("Cheerful R2D2.mp3");
+            sound->Play(sound->Sounds[((int)((OMPropertyLong*)prop)->Value) - 1] + ".mp3");
+            ((OMPropertyLong*)prop)->Value = 0;
         }
         break;
     case 'l':   // sound file list
@@ -50,40 +77,21 @@ void SoundConnector::Pull(OMObject *obj, OMProperty *prop)
     switch (id)
     {
     case 'p':   // play
-        // UNDONE:
         ((OMPropertyLong*)prop)->Value = 0;
         break;
     case 'l':   // sound file list
         {
             String s;
-            File root = SPIFFS.open("/", 0);
-            if (!root)
+            for (auto item : sound->Sounds)
             {
-                floge("Failed to open root directory");
-                return;
-            }
-            File file = root.openNextFile();
-            while (file)
-            {
-                if (!file.isDirectory())
+                if (item.length() + s.length() > 240)
                 {
-                    String name(file.name());
-                    name.toLowerCase();
-                    if (name.endsWith(".mp3") || name.endsWith(".MP3"))
-                    {
-                        name.remove(name.length() - 4);
-                        // good enough for about 20 sound files in an esp_now packet
-                        if (name.length() + s.length() > 240)
-                        {
-                            floge("sound list too long");
-                            break;
-                        }
-                        if (s.length() > 0)
-                            s.concat(',');
-                        s.concat(name);
-                    }
+                    floge("sound list too long");
+                    break;
                 }
-                file = root.openNextFile();
+                if (s.length() > 0)
+                    s.concat(',');
+                s.concat(item);
             }
             ((OMPropertyString*)prop)->Value = s;
         }
@@ -101,10 +109,11 @@ SoundConnector SoundConn;
 void Sound::Play(String fileName)
 {
     // Open music file
+    flogv("playing %s", fileName.c_str());
     bool fret = audio.connecttoFS(SPIFFS, ("/" + fileName).c_str());
     if (!fret)
     {
-        floge("audio connect error");
+        floge("audio play error");
         return;
     }
     auto s = audio.getFileSize();
@@ -113,6 +122,8 @@ void Sound::Play(String fileName)
 
 void Sound::Setup()
 {
+    Sounds = SoundFiles();
+
     // Setup I2S 
     if (!audio.setPinout(Pin_I2S_BCLK, Pin_I2S_LRC, Pin_I2S_DOUT))
     {
