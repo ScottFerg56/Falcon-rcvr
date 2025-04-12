@@ -57,8 +57,6 @@ void RampConnector::Pull(OMObject *obj, OMProperty *prop)
 
 RampConnector RampConn;
 
-extern Root root;
-
 void Ramp::SetState(RampStates state)
 {
     if (RampState == state)
