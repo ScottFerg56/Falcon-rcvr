@@ -9,33 +9,6 @@ Sound Sound::sound;
 
 Audio audio;
 
-std::vector<String> SoundFiles()
-{
-    std::vector<String> files;
-    File root = SPIFFS.open("/", 0);
-    if (!root)
-    {
-        floge("Failed to open root directory");
-        return files;
-    }
-    File file = root.openNextFile();
-    while (file)
-    {
-        if (!file.isDirectory())
-        {
-            String name(file.name());
-            if (name.endsWith(".mp3"))
-            {
-                name.remove(name.length() - 4);
-                files.push_back(name);
-            }
-        }
-        file = root.openNextFile();
-    }
-    std::sort(files.begin(), files.end());
-    return files;
-}
-
 void SoundConnector::Init(OMObject* obj)
 {
     auto sound = &Sound::GetInstance();
@@ -51,7 +24,8 @@ void SoundConnector::Push(OMObject* obj, OMProperty* prop)
     {
     case 'p':   // play
         {
-            sound->Play(sound->Sounds[((int)((OMPropertyLong*)prop)->Value) - 1] + ".mp3");
+            // convert 1-based index to 0-based array
+            sound->Play("/" + sound->Sounds[((int)((OMPropertyLong*)prop)->Value) - 1] + ".mp3");
             ((OMPropertyLong*)prop)->Value = 0;
         }
         break;
@@ -65,6 +39,18 @@ void SoundConnector::Push(OMObject* obj, OMProperty* prop)
 
             int volume = ((OMPropertyLong*)prop)->Value;
             audio.setVolume(volume);
+        }
+        break;
+    case 'x':   // delete
+        {
+            // convert 1-based index to 0-based array
+            int inx = ((OMPropertyLong*)prop)->Value;
+            SPIFFS.remove("/" + sound->Sounds[inx - 1] + ".mp3");
+            ((OMPropertyLong*)prop)->Value = 0;
+            // rebuild and send the sound list
+            auto prop = sound->SoundObject->GetProperty('l');
+            prop->Pull();
+            prop->Send();
         }
         break;
     }
@@ -81,6 +67,8 @@ void SoundConnector::Pull(OMObject *obj, OMProperty *prop)
         break;
     case 'l':   // sound file list
         {
+            // build comma-delimited list of sound files
+            sound->SetSounds();
             String s;
             for (auto item : sound->Sounds)
             {
@@ -110,7 +98,7 @@ void Sound::Play(String fileName)
 {
     // Open music file
     flogv("playing %s", fileName.c_str());
-    bool fret = audio.connecttoFS(SPIFFS, ("/" + fileName).c_str());
+    bool fret = audio.connecttoFS(SPIFFS, fileName.c_str());
     if (!fret)
     {
         floge("audio play error");
@@ -120,10 +108,46 @@ void Sound::Play(String fileName)
     flogd("audio size %d", s);
 }
 
+void Sound::ReceivedFile(String fileName)
+{
+    flogv("received file %s", fileName.c_str());
+    // rebuild and send the sound list
+    auto prop = SoundObject->GetProperty('l');
+    prop->Pull();
+    prop->Send();
+    Play(fileName);
+}
+
+void Sound::SetSounds()
+{
+    Sounds.clear();
+    File root = SPIFFS.open("/", 0);
+    if (!root)
+    {
+        floge("Failed to open root directory");
+        return;
+    }
+    File file = root.openNextFile();
+    while (file)
+    {
+        if (!file.isDirectory())
+        {
+            String name(file.name());
+            if (name.endsWith(".mp3"))
+            {
+                name.remove(name.length() - 4);
+                Sounds.push_back(name);
+            }
+        }
+        file = root.openNextFile();
+    }
+    std::sort(Sounds.begin(), Sounds.end());
+    ((OMPropertyLong*)SoundObject->GetProperty('p'))->Max = Sounds.size();
+    ((OMPropertyLong*)SoundObject->GetProperty('x'))->Max = Sounds.size();
+}
+
 void Sound::Setup()
 {
-    Sounds = SoundFiles();
-
     // Setup I2S 
     if (!audio.setPinout(Pin_I2S_BCLK, Pin_I2S_LRC, Pin_I2S_DOUT))
     {

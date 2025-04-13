@@ -18,6 +18,8 @@ public:
 	void		    Setup();
 	void		    Run();
     void            Play(String fileName);
+    void            ReceivedFile(String fileName);
+    void            SetSounds();
     OMObject*       SoundObject;
     std::vector<String> Sounds;
     // get singleton instance

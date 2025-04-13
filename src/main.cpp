@@ -19,8 +19,7 @@ public:
         Root::Run();
         if (!FileReceived.isEmpty())
         {
-            // flogv("File transfer complete");
-            Sound::GetInstance().Play(FileReceived);
+            Sound::GetInstance().ReceivedFile(FileReceived);
             FileReceived = "";
         }
     }
