@@ -19,7 +19,7 @@ void SoundConnector::Init(OMObject* obj)
 void SoundConnector::Push(OMObject* obj, OMProperty* prop)
 {
     auto sound = (Sound*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 'p':   // play
@@ -59,7 +59,7 @@ void SoundConnector::Push(OMObject* obj, OMProperty* prop)
 void SoundConnector::Pull(OMObject *obj, OMProperty *prop)
 {
     auto sound = (Sound*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 'p':   // play

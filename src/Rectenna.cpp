@@ -14,7 +14,7 @@ void RectennaConnector::Init(OMObject* obj)
 void RectennaConnector::Push(OMObject* obj, OMProperty* prop)
 {
     auto rect = (Rectenna*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 's':   // sweep
@@ -34,7 +34,7 @@ void RectennaConnector::Push(OMObject* obj, OMProperty* prop)
 void RectennaConnector::Pull(OMObject *obj, OMProperty *prop)
 {
     auto rect = (Rectenna*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 's':   // sweep

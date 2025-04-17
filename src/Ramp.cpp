@@ -21,7 +21,7 @@ void RampConnector::Init(OMObject* obj)
 void RampConnector::Push(OMObject* obj, OMProperty* prop)
 {
     auto ramp = (Ramp*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 's':   // state
@@ -41,7 +41,7 @@ void RampConnector::Push(OMObject* obj, OMProperty* prop)
 void RampConnector::Pull(OMObject *obj, OMProperty *prop)
 {
     auto ramp = (Ramp*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 's':   // state

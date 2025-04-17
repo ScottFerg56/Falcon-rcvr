@@ -134,7 +134,7 @@ void LightConnector::Init(OMObject* obj)
 void LightConnector::Push(OMObject* obj, OMProperty* prop)
 {
     auto def = (LightDef*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 'o':   // Light on/off
@@ -193,7 +193,7 @@ void LightConnector::Push(OMObject* obj, OMProperty* prop)
 void LightConnector::Pull(OMObject *obj, OMProperty *prop)
 {
     auto def = (LightDef*)obj->Data;
-    auto id = prop->GetID();
+    auto id = prop->Id;
     switch (id)
     {
     case 'o':   // Light on/off
