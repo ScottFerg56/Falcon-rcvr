@@ -23,6 +23,11 @@ public:
             FileReceived = "";
         }
     }
+    void    ConnectionChanged(bool connected)
+    {
+        Root::ConnectionChanged(connected);
+        Sound::GetInstance().Play(connected ? "/Cheerful R2D2.mp3" : "/Sad R2D2.mp3");
+    }
 private:
     String FileReceived;
 };
@@ -113,6 +118,7 @@ void setup()
     
     root.AddObjects(Objects);
     root.Setup(&agent);
+    Sound::GetInstance().Play("/Startup.mp3");
     flogv("Setup done");
 }
 
