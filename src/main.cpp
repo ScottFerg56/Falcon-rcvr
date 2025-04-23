@@ -8,12 +8,56 @@
 #include <WiFi.h>
 #include "SPIFFS.h"
 #include "ESPNAgent.h"
+#include "rcvr.h"
+
+const OMPropDef   RootProps[] =
+{
+    { 'x', "Restart",   OMT_LONG, OMF_WO_DEVICE, 1234, 1234  },
+    { 'f', "FreeSpace", OMT_LONG, OMF_RO_DEVICE, 0, LONG_MAX },
+    { }
+};
+
+class RootConnector : public OMConnector
+{
+public:
+    void Init(OMObject *obj) override {}
+    void Push(OMObject *obj, OMProperty *prop) override
+    {
+        auto id = prop->Id;
+        switch (id)
+        {
+        case 'x':   // restart
+            esp_restart();
+            break;
+        }
+    }
+    void Pull(OMObject *obj, OMProperty *prop) override
+    {
+        auto id = prop->Id;
+        switch (id)
+        {
+        case 'f':   // free space
+            ((OMPropertyLong*)prop)->Value = SPIFFS.totalBytes() - SPIFFS.usedBytes();
+            break;
+        }
+    }
+};
+
+RootConnector RootConn;
 
 class FRoot : public Root
 {
 public:
-	FRoot(bool isDevice) : Root(isDevice, 'R', "Root", nullptr) { }
+	FRoot(bool isDevice) : Root(isDevice, 'R', "Root", nullptr), Metro(1000) { }
     void    ReceivedFile(String fileName) override { FileReceived = fileName; }
+    void    Setup(Agent* pagent) override
+    {
+        // pinMode(Pin_Main_Switch, INPUT_PULLUP);
+        AddProperties(RootProps);
+        Connector = &RootConn;
+        Root::Setup(pagent);
+    }
+
     void	Run() override
     {
         Root::Run();
@@ -21,14 +65,48 @@ public:
         {
             Sound::GetInstance().ReceivedFile(FileReceived);
             FileReceived = "";
+            auto prop = GetProperty('f');
+            prop->Pull();
+            prop->Send();
+        }
+        if (Metro)
+        {
+            // flogv("main switch read");
+            pinMode(Pin_Main_Switch, INPUT_PULLUP);
+            bool on = !digitalRead(Pin_Main_Switch);
+            if (on != MainSwitchOn)
+            {
+                MainSwitchOn = on;
+                if (on)
+                {
+                    flogv("main switch on");
+                    GetObject('l')->TraverseObjects([](OMObject* o) {
+                        auto p = o->GetProperty('o');
+                        if (p)
+                        {
+                            ((OMPropertyBool*)p)->Set(true);
+                            p->Send();
+                        }
+                    });
+                }
+                else
+                {
+                    flogv("main switch off");
+                    Command("<R");
+                    Command("?R");
+                }
+            }
         }
     }
+
     void    ConnectionChanged(bool connected)
     {
         Root::ConnectionChanged(connected);
         Sound::GetInstance().Play(connected ? "/Cheerful R2D2.mp3" : "/Sad R2D2.mp3");
     }
 private:
+	Metronome	Metro;
+    bool MainSwitchOn = false;
     String FileReceived;
 };
 

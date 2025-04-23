@@ -15,7 +15,7 @@
 // define the type of neopixel bus we're using
 typedef  NeoPixelBus<NeoGrbFeature, NeoEsp32Rmt0Ws2812xMethod> NEOMETHOD;    // Neo800KbpsMethod NeoWs2812xMethod
 // create the raw NeoPixelBus strip
-NEOMETHOD Strip(58, Pin_NEOSTRIP);
+NEOMETHOD Strip(106, Pin_NEOSTRIP);
 // create a strip class from the raw strip conformant to the FX requirements
 FXNeoBus<NEOMETHOD> NeoBus(Strip);
 
@@ -45,12 +45,12 @@ struct LightDef
 #define DEF_SPEED 1000
 
 // Pixels grouped into logical elements, ordered by pixel number.
-const uint16_t Pixels_Warning        [] = { 1, 5, 16, 17, 18, 19, 23, 24, 42, /*63, 66, 98, 99, 102, 103,*/ PMAP_END };
-const uint16_t Pixels_Landing        [] = { 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 25, /*62, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74, 100, 101, 104, 105,*/ PMAP_END };
-const uint16_t Pixels_Headlight      [] = { 20, /*61,*/ PMAP_END };
-const uint16_t Pixels_Sconce         [] = { 26, 27, 28, 29, 30, 31, 32, 33, 34, /*58, 59, 60,*/ PMAP_END };
+const uint16_t Pixels_Warning        [] = { 1, 5, 16, 17, 18, 19, 23, 24, 42, 63, 66, 98, 99, 102, 103, PMAP_END };
+const uint16_t Pixels_Landing        [] = { 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 25, 62, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74, 100, 101, 104, 105, PMAP_END };
+const uint16_t Pixels_Headlight      [] = { 20, 61, PMAP_END };
+const uint16_t Pixels_Sconce         [] = { 26, 27, 28, 29, 30, 31, 32, 33, 34, 58, 59, 60, PMAP_END };
 const uint16_t Pixels_Floor          [] = { 44, 45, 46, 47, 48, 57, PMAP_END };
-const uint16_t Pixels_Engine         [] = { /*75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97,*/ PMAP_END };
+const uint16_t Pixels_Engine         [] = { 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, PMAP_END };
 
 LightDef LightDefs[] = 
 {//             Path   Anim                 On     Color1    Color2    Speed      Reverse Segment
@@ -63,9 +63,9 @@ LightDef LightDefs[] =
 { /*Sconce*/    "lts", FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Sconce, &NeoBus)    },
 { /*Floor*/     "ltf", FX_STATIC,  FXParams(false, 0x004040, 0x000000, DEF_SPEED, false), new FXStripSegMapped(Pixels_Floor, &NeoBus)     },
 { /*Bay*/	    "lhy", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(55, 56, &NeoBus)            },
-{ /*Bed*/       "lhb", FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Monitor)          },
+{ /*Bed*/       "lhb", FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Bed)              },
 { /*Grates*/    "lhg", FX_STATIC,  FXParams(false, 0x404040, 0x000000, DEF_SPEED, false), new FXStripSegRange(53, 54, &NeoBus)            },
-{ /*Monitor*/   "lhm", FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Bed)              },
+{ /*Monitor*/   "lhm", FX_STATIC,  FXParams(false, 0xFFFFFF, 0x000000, DEF_SPEED, false), new FXLedSegBase(Pin_LED_Hold_Monitor)          },
 { /*Red*/	    "lh0", FX_STATIC,  FXParams(false, 0x400000, 0x000000, DEF_SPEED, false), new FXStripSegRange(49, &NeoBus)                },
 { /*Green*/	    "lh1", FX_STATIC,  FXParams(false, 0x004000, 0x000000, DEF_SPEED, false), new FXStripSegRange(51, &NeoBus)                },
 { /*Blue*/	    "lh2", FX_STATIC,  FXParams(false, 0x000040, 0x000000, DEF_SPEED, false), new FXStripSegRange(52, &NeoBus)                },

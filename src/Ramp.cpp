@@ -73,15 +73,15 @@ void Ramp::SetState(RampStates state)
             }
             else
             {
-                // myMotor->run(BACKWARD);
-                // myMotor->setSpeed(Speed);
+                myMotor->run(BACKWARD);
+                myMotor->setSpeed(Speed);
                 flogd("ramp Retracting");
                 RampState = Retracting;
             }
             break;
         case Stopped:
-            // myMotor->run(RELEASE);
-            // myMotor->setSpeed(0);
+            myMotor->run(RELEASE);
+            myMotor->setSpeed(0);
             if (RampExtended())
             {
                 flogd("ramp Extended");
@@ -107,8 +107,8 @@ void Ramp::SetState(RampStates state)
             }
             else
             {
-                // myMotor->run(FORWARD);
-                // myMotor->setSpeed(Speed);
+                myMotor->run(FORWARD);
+                myMotor->setSpeed(Speed);
                 flogd("ramp Extending");
                 RampState = Extending;
             }
@@ -130,7 +130,7 @@ void Ramp::Setup()
 	pinMode(Pin_ExtendedLimitSW, INPUT_PULLUP);
 
 	// create with the default frequency 1.6KHz
-	// AFMS.begin();
+	AFMS.begin();
 	// turn off motor
     myMotor = AFMS.getMotor(1);
 }

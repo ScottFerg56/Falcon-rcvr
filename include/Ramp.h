@@ -26,7 +26,7 @@ public:
     void        SetSpeed(uint8_t speed)
     {
         Speed = speed;
-        // myMotor->setSpeed(Speed);
+        myMotor->setSpeed(Speed);
     }
     uint8_t     GetSpeed() { return Speed; }
     OMObject*   RampObject;

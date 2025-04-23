@@ -18,3 +18,5 @@
 // https://github.com/madhephaestus/ESP32Servo
 // All pin numbers are allowed, but only pins 2,4,12-19,21-23,25-27,32-33 are recommended.
 #define Pin_Servo               14
+
+#define Pin_Main_Switch         15

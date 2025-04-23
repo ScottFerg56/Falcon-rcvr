@@ -2,6 +2,10 @@
 #include "Rectenna.h"
 #include "FLogger.h"
 
+// 167 degrees seems to be the limit for this setup
+#define MIN_POS	0
+#define MAX_POS	167
+
 Rectenna Rectenna::rectenna;
 
 void RectennaConnector::Init(OMObject* obj)
@@ -63,8 +67,8 @@ void Rectenna::Setup()
 
 int Rectenna::GetPosition()
 {
-	// convert position range [0-180] to [0-100]
-    return map(rectPos, 0, 180, 0, 100);
+	// convert position range [degrees] to [0-100]
+    return map(rectPos, MIN_POS, MAX_POS, 0, 100);
 }
 
 void Rectenna::SetPosition(int position)
@@ -72,8 +76,8 @@ void Rectenna::SetPosition(int position)
 	// make sure we're not competing with Sweep to set position
 	// and that the servo is attached and not free-spinning
 	SetState(Hold);
-	// convert position range from [0-100] to [0-180]
-    rectPos = map(position, 0, 100, 0, 180);
+	// convert position range from [0-100] to [degrees]
+    rectPos = map(position, 0, 100, MIN_POS, MAX_POS);
 	rectServo.write(rectPos);
 	flogv("Rectenna position: %d", rectPos);
 }
@@ -147,7 +151,7 @@ void Rectenna::Run()
 	switch (RectState)
 	{
 	case SweepingCW:
-		if (++rectPos >= 180)
+		if (++rectPos >= MAX_POS)
         {
 			RectState = SweepingCCW;
             // flogv("flip to CCW");
@@ -156,7 +160,7 @@ void Rectenna::Run()
 			rectServo.write(rectPos);
 		break;
 	case SweepingCCW:
-		if (--rectPos <= 0)
+		if (--rectPos <= MIN_POS)
         {
 			RectState = SweepingCW;
             // flogv("flip to CW");
