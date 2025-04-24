@@ -20,3 +20,5 @@
 #define Pin_Servo               14
 
 #define Pin_Main_Switch         15
+
+extern long mapr(long x, long in_min, long in_max, long out_min, long out_max);

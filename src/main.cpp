@@ -10,6 +10,15 @@
 #include "ESPNAgent.h"
 #include "rcvr.h"
 
+long mapr(long x, long in_min, long in_max, long out_min, long out_max)
+{
+    const long run = in_max - in_min;
+    const long rise = out_max - out_min;
+    const long delta = x - in_min;
+    long n = delta * rise;
+    return ((long)std::round(static_cast<double>(n) / run)) + out_min;
+}
+
 const OMPropDef   RootProps[] =
 {
     { 'x', "Restart",   OMT_LONG, OMF_WO_DEVICE, 1234, 1234  },
@@ -65,9 +74,7 @@ public:
         {
             Sound::GetInstance().ReceivedFile(FileReceived);
             FileReceived = "";
-            auto prop = GetProperty('f');
-            prop->Pull();
-            prop->Send();
+            GetProperty('f')->PullSend();
         }
         if (Metro)
         {

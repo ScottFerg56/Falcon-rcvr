@@ -30,7 +30,7 @@ void RampConnector::Push(OMObject* obj, OMProperty* prop)
     case 'v':   // speed
         {
             // convert speed range from [0-100]
-            auto speed = map(((OMPropertyLong*)prop)->Value, 0, 100, MIN_SPEED, MAX_SPEED);
+            auto speed = mapr(((OMPropertyLong*)prop)->Value, 0, 100, MIN_SPEED, MAX_SPEED);
             ramp->SetSpeed(speed);
             flogd("Ramp speed: %d", ((OMPropertyLong*)prop)->Value);
         }
@@ -50,7 +50,7 @@ void RampConnector::Pull(OMObject *obj, OMProperty *prop)
         break;
     case 'v':   // speed
         // convert speed range to [0-100]
-        ((OMPropertyLong*)prop)->Value = map(ramp->GetSpeed(), MIN_SPEED, MAX_SPEED, 0, 100);
+        ((OMPropertyLong*)prop)->Value = mapr(ramp->GetSpeed(), MIN_SPEED, MAX_SPEED, 0, 100);
         break;
     }
 }
@@ -116,8 +116,7 @@ void Ramp::SetState(RampStates state)
     }
 
     // notify of state change
-    auto prop = (OMPropertyChar*)(RampObject->GetProperty('s'));
-    prop->SetSend(prop->FromIndex(RampState));
+    RampObject->GetProperty('s')->PullSend();
 }
 
 bool Ramp::RampRetracted() { return !digitalRead(Pin_RetractedLimitSW); }

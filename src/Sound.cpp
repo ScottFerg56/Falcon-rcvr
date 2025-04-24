@@ -48,9 +48,7 @@ void SoundConnector::Push(OMObject* obj, OMProperty* prop)
             SPIFFS.remove("/" + sound->Sounds[inx - 1] + ".mp3");
             ((OMPropertyLong*)prop)->Value = 0;
             // rebuild and send the sound list
-            auto prop = sound->SoundObject->GetProperty('l');
-            prop->Pull();
-            prop->Send();
+            sound->SoundObject->GetProperty('l')->PullSend();
         }
         break;
     }
@@ -112,9 +110,7 @@ void Sound::ReceivedFile(String fileName)
 {
     flogv("received file %s", fileName.c_str());
     // rebuild and send the sound list
-    auto prop = SoundObject->GetProperty('l');
-    prop->Pull();
-    prop->Send();
+    SoundObject->GetProperty('l')->PullSend();
     Play(fileName);
 }
 

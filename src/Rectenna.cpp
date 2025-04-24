@@ -4,7 +4,7 @@
 
 // 167 degrees seems to be the limit for this setup
 #define MIN_POS	0
-#define MAX_POS	167
+#define MAX_POS	180     // 167
 
 Rectenna Rectenna::rectenna;
 
@@ -61,6 +61,7 @@ void Rectenna::Setup()
 	ESP32PWM::allocateTimer(1);
 	ESP32PWM::allocateTimer(2);
 	ESP32PWM::allocateTimer(3);
+    rectServo.attach(Pin_Servo, 550, 2227);
 	rectServo.setPeriodHertz(50);    // standard 50 hz servo
 	RectState = Stopped;
 }
@@ -68,7 +69,7 @@ void Rectenna::Setup()
 int Rectenna::GetPosition()
 {
 	// convert position range [degrees] to [0-100]
-    return map(rectPos, MIN_POS, MAX_POS, 0, 100);
+    return mapr(rectPos, MIN_POS, MAX_POS, 0, 100);
 }
 
 void Rectenna::SetPosition(int position)
@@ -77,7 +78,7 @@ void Rectenna::SetPosition(int position)
 	// and that the servo is attached and not free-spinning
 	SetState(Hold);
 	// convert position range from [0-100] to [degrees]
-    rectPos = map(position, 0, 100, MIN_POS, MAX_POS);
+    rectPos = mapr(position, 0, 100, MIN_POS, MAX_POS);
 	rectServo.write(rectPos);
 	flogv("Rectenna position: %d", rectPos);
 }
@@ -93,13 +94,13 @@ void Rectenna::SetSweep(bool onOff)
 		return;
 	SetState(onOff ? SweepingCW : Stopped); // LastSweepState
     if (!onOff)
-        ((OMPropertyLong*)(RectennaObject->GetProperty('p')))->SetSend(GetPosition());
+        RectennaObject->GetProperty('p')->PullSend();
 }
 
 void Rectenna::SetClock()
 {
 	// convert Speed range from [0-100] to [5-30]
-	Metro.PeriodMS = map(Speed, 0, 100, 100, 20);
+	Metro.PeriodMS = mapr(Speed, 0, 100, 100, 20);
 	flogv("Rectenna speed: %d  period %d ms", Speed, Metro.PeriodMS);
 }
 
@@ -128,7 +129,7 @@ void Rectenna::SetState(RectStates state)
     if (sweep != GetSweep())
     {
         // if state change affects Sweep, notify the controller
-        ((OMPropertyBool*)(RectennaObject->GetProperty('s')))->SetSend(GetSweep());
+        RectennaObject->GetProperty('s')->PullSend();
     }
 }
 
@@ -141,8 +142,8 @@ void Rectenna::Run()
     {
         if (rectPos == -1)
         {
-            rectServo.attach(Pin_Servo, 550, 2400);
             SetPosition(50);
+            RectennaObject->GetProperty('p')->PullSend();
         }
         return;
     }    
