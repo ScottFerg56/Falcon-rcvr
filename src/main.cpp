@@ -19,13 +19,6 @@ long mapr(long x, long in_min, long in_max, long out_min, long out_max)
     return ((long)std::round(static_cast<double>(n) / run)) + out_min;
 }
 
-const OMPropDef   RootProps[] =
-{
-    { 'x', "Restart",   OMT_LONG, OMF_WO_DEVICE, 1234, 1234  },
-    { 'f', "FreeSpace", OMT_LONG, OMF_RO_DEVICE, 0, LONG_MAX },
-    { }
-};
-
 class RootConnector : public OMConnector
 {
 public:
@@ -54,16 +47,17 @@ public:
 
 RootConnector RootConn;
 
+#include "OMDef.h"
+
 class FRoot : public Root
 {
 public:
-	FRoot(bool isDevice) : Root(isDevice, 'R', "Root", nullptr), Metro(1000) { }
+	FRoot(bool isDevice) : Root(isDevice, 'R', "Root", &RootConn), Metro(1000) { }
     void    ReceivedFile(String fileName) override { FileReceived = fileName; }
     void    Setup(Agent* pagent) override
     {
         // pinMode(Pin_Main_Switch, INPUT_PULLUP);
         AddProperties(RootProps);
-        Connector = &RootConn;
         Root::Setup(pagent);
     }
 
@@ -164,9 +158,6 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
       file = root.openNextFile();
     }
   }
-
-#include "OMDef.h"
-
 
 void setup()
 {
