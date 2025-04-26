@@ -81,6 +81,7 @@ public:
                 if (on)
                 {
                     flogv("main switch on");
+                    // turn on all lights
                     GetObject('l')->TraverseObjects([](OMObject* o) {
                         auto p = o->GetProperty('o');
                         if (p)
@@ -89,12 +90,26 @@ public:
                             p->Send();
                         }
                     });
+                    // start Rectenna sweep
+                    auto sweep = (OMPropertyBool*)GetObject('a')->GetProperty('s');
+                    sweep->Set(true);
+                    sweep->Send();
+                    // extend ramp
+                    auto ramp = (OMPropertyChar*)GetObject('r')->GetProperty('s');
+                    sweep->Set('E');
+                    sweep->Send();
+                    // play sound
+                    Sound::GetInstance().Play("/Startup.mp3");
                 }
                 else
                 {
                     flogv("main switch off");
+                    // restore all ptrops from preferences
                     Command("<R");
+                    // send all to controller
                     Command("?R");
+                    // play sound
+                    Sound::GetInstance().Play("/Shutdown.mp3");
                 }
             }
         }
