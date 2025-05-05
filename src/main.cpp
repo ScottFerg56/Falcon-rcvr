@@ -96,10 +96,10 @@ public:
                     sweep->Send();
                     // extend ramp
                     auto ramp = (OMPropertyChar*)GetObject('r')->GetProperty('s');
-                    sweep->Set('E');
-                    sweep->Send();
+                    ramp->Set('E');
+                    ramp->Send();
                     // play sound
-                    Sound::GetInstance().Play("/Startup.mp3");
+                    Sound::GetInstance().Play("/Theme.mp3");
                 }
                 else
                 {
@@ -109,7 +109,7 @@ public:
                     // send all to controller
                     Command("?R");
                     // play sound
-                    Sound::GetInstance().Play("/Shutdown.mp3");
+                    Sound::GetInstance().Play("/Obi Wan Force.mp3");
                 }
             }
         }
